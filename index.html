@@ -15,6 +15,13 @@
       font-size: 14px;
       border-radius: 3px;
     }
+    .grid-number {
+      background: rgba(255,255,255,0.8);
+      color: black;
+      padding: 1px 2px;
+      font-size: 8px;
+      border-radius: 2px;
+    }
     .reset-button {
       position: absolute;
       top: 10px;
@@ -44,38 +51,77 @@
     var image = L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // MiniMap
     var miniMap = new L.Control.MiniMap(L.imageOverlay('image.png', bounds), {
       toggleDisplay: true,
       minimized: false,
       zoomLevelOffset: -4
     }).addTo(map);
 
-    // Grid system
-    const gridSize = 20;
-    const cellSize = 1000 / gridSize;
-    let markers = [];
+    const columns = 26;
+    const rows = 26;
+    const cellWidth = 1000 / columns;
+    const cellHeight = 1000 / rows;
 
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        let label = String.fromCharCode(65 + j) + i;
-        let center = [j * cellSize + cellSize / 2, i * cellSize + cellSize / 2];
+    // Grid lines
+    for (let i = 1; i < columns; i++) {
+      let x = i * cellWidth;
+      L.polyline([[0, x], [1000, x]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
+    }
+    for (let j = 1; j < rows; j++) {
+      let y = j * cellHeight;
+      L.polyline([[y, 0], [y, 1000]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
+    }
 
-        let marker = L.marker(center, {
+    // Add top (1–26) labels
+    for (let i = 0; i < columns; i++) {
+      let label = (i + 1).toString();
+      let center = [cellHeight / 2, i * cellWidth + cellWidth / 2];
+
+      L.marker([center[0], center[1]], {
+        icon: L.divIcon({
+          className: 'grid-label',
+          html: label,
+          iconSize: [30, 20],
+          iconAnchor: [15, 10]
+        })
+      }).addTo(map);
+    }
+
+    // Add side (A–Z) labels
+    for (let j = 0; j < rows; j++) {
+      let label = String.fromCharCode(65 + j);
+      let center = [j * cellHeight + cellHeight / 2, cellWidth / 2];
+
+      L.marker([center[0], center[1]], {
+        icon: L.divIcon({
+          className: 'grid-label',
+          html: label,
+          iconSize: [30, 20],
+          iconAnchor: [15, 10]
+        })
+      }).addTo(map);
+    }
+
+    // Add small grid cell numbers in top-left of each cell
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < columns; col++) {
+        let topLeftY = row * cellHeight + 4;
+        let topLeftX = col * cellWidth + 4;
+        let label = String.fromCharCode(65 + row) + (col + 1);
+
+        L.marker([topLeftY, topLeftX], {
           icon: L.divIcon({
-            className: 'grid-label',
+            className: 'grid-number',
             html: label,
-            iconSize: [30, 20],
-            iconAnchor: [15, 10]
+            iconSize: [20, 12],
+            iconAnchor: [0, 0]
           })
         }).addTo(map);
-
-        marker.bindPopup("You clicked cell: " + label);
-        marker.bindTooltip("Region: " + label, { permanent: false });
       }
     }
 
-    // Custom red X fish marker icon
+    let markers = [];
+
     const fishIcon = L.divIcon({
       className: 'fish-marker',
       html: '<div style="color:red;font-size:24px;font-weight:bold;">×</div>',
@@ -83,7 +129,6 @@
       iconAnchor: [12, 12]
     });
 
-    // Click to place marker or image
     map.on('click', function(e) {
       const input = prompt("Enter label for marker, 'fish' for red X, or image URL:", "New Marker or Image URL");
       if (!input) return;
@@ -107,7 +152,6 @@
       saveMarkers();
     });
 
-    // Right-click to remove marker
     map.on('contextmenu', function(e) {
       let found = markers.find(m => m.getLatLng().equals(e.latlng));
       if (found) {

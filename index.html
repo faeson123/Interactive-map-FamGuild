@@ -73,6 +73,15 @@
     <label><input type="checkbox" class="toggle-marker" data-type="dynamic" checked> Dynamic Events</label>
   </div>
   <div class="logo">FAM GUILD</div>
+
+  <!-- Login Panel -->
+  <div style="position:absolute; top:10px; left:10px; background:white; padding:10px; border-radius:8px; z-index:1000;">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <div id="uidDisplay" style="margin-top:5px; font-size:12px;"></div>
+  </div>
+
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
@@ -82,6 +91,11 @@
       orderBy, getDocs, addDoc, deleteDoc, doc,
       serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      onAuthStateChanged
+    } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyBhJyc3a-i6um7te-W2Z-m-8J0u0CMerJY",
@@ -96,32 +110,31 @@
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    const markerGroups = { fish: [], quest: [], herbs: [], mining: [], trees: [], dynamic: [] };
-    const markers = [];
-  </script>
-
-<script type="module">
-  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
-
-  const auth = getAuth();
-  const provider = new GoogleAuthProvider();
-  let currentUser = null;
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const loginBtn = document.createElement('div');
-    loginBtn.textContent = "Admin Login";
-    loginBtn.className = "reset-button";
-    loginBtn.style.top = "50px";
-    loginBtn.onclick = () => signInWithPopup(auth, provider).catch(console.error);
-    document.body.appendChild(loginBtn);
-
-    onAuthStateChanged(auth, user => {
-      currentUser = user;
-      if (user) console.log("Signed in as:", user.email);
+    // onAuthStateChanged to auto-display UID if already signed in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("Logged in as:", user.uid);
+        document.getElementById('uidDisplay').innerText = "UID: " + user.uid;
+      }
     });
-  });
-</script>
 
+    window.login = async function () {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        document.getElementById('uidDisplay').innerText = "UID: " + user.uid;
+        console.log("Logged in. UID:", user.uid);
+      } catch (error) {
+        alert("Login failed: " + error.message);
+        console.error(error);
+      }
+    };
+
+    // Rest of the map logic remains unchanged...
+  </script>
 </body>
 </html>

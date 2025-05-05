@@ -100,5 +100,28 @@
     const markerGroups = { fish: [], quest: [], herbs: [], mining: [], trees: [], dynamic: [] };
     const markers = [];
   </script>
+
+<script type="module">
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+
+  const auth = getAuth();
+  const provider = new GoogleAuthProvider();
+  let currentUser = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const loginBtn = document.createElement('div');
+    loginBtn.textContent = "Admin Login";
+    loginBtn.className = "reset-button";
+    loginBtn.style.top = "50px";
+    loginBtn.onclick = () => signInWithPopup(auth, provider).catch(console.error);
+    document.body.appendChild(loginBtn);
+
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+      if (user) console.log("Signed in as:", user.email);
+    });
+  });
+</script>
+
 </body>
 </html>

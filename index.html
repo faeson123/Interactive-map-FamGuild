@@ -70,7 +70,7 @@
     <label><input type="checkbox" class="toggle-marker" data-type="herbs" checked> Herbs</label><br>
     <label><input type="checkbox" class="toggle-marker" data-type="mining" checked> Mining</label><br>
     <label><input type="checkbox" class="toggle-marker" data-type="trees" checked> Trees</label><br>
-    <label><input type="checkbox" class="toggle-marker" data-type="dynamic" checked> Dynamic Events</label>
+    <label><input type="checkbox" class="toggle-marker" data-type="dynamic" checked> Dynamic Events</label><br>
   </div>
   <div class="logo">FAM GUILD</div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -107,100 +107,59 @@
     const cellWidth = 1040 / columns;
     const cellHeight = 1040 / rows;
 
-    for (let i = 0; i <= columns; i++) {
-      let x = i * cellWidth;
-      L.polyline([[0, x], [1040, x]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
+    // Check if password has been entered
+    if (!localStorage.getItem("passwordEntered")) {
+      const password = prompt("Enter password to add or delete markers:");
+
+      // If password is correct, allow access
+      if (password === "Pumpitup") {
+        localStorage.setItem("passwordEntered", "true"); // Store the flag
+        alert("Password accepted! You can now add and delete markers.");
+      } else {
+        alert("Incorrect password. You cannot add or delete markers.");
+      }
     }
-    for (let j = 0; j <= rows; j++) {
-      let y = j * cellHeight;
-      L.polyline([[y, 0], [y, 1040]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
-    }
 
-    // Marker data (e.g., icons)
-    const fishIcon = L.divIcon({ className: 'fish-marker', html: '<div style="color:red;font-size:12px;font-weight:bold;">X</div>', iconSize: [12, 12], iconAnchor: [6, 6] });
-    const questIcon = L.divIcon({ className: 'quest-marker', html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+    // Marker groupings by type
+    const markerGroups = {
+      fish: [],
+      quest: [],
+      herbs: [],
+      mining: [],
+      trees: [],
+      dynamic: []
+    };
 
-    // Marker groups to store markers of each type
-    const markerGroups = { fish: [], quest: [] };
-    const markers = [];
-
-    // Fetch markers from Firestore and display on map
     (async () => {
       const q = query(collection(db, 'markers'), orderBy('ts'));
       const snapshot = await getDocs(q);
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        const { lat, lng, label, iconType } = data;
+        const { lat, lng, label, iconType, iconUrl } = data;
         let icon;
-        if (iconType === 'fish') icon = fishIcon;
-        else if (iconType === 'quest') icon = questIcon;
+        if (iconType === 'fish') icon = L.divIcon({ className: 'fish-marker', html: '<div style="color:red;font-size:12px;font-weight:bold;">X</div>', iconSize: [12, 12], iconAnchor: [6, 6] });
+        else if (iconType === 'quest') icon = L.divIcon({ className: 'quest-marker', html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+        else if (iconType === 'mining') icon = L.divIcon({ className: 'mining-marker', html: '<div style="color:gray;font-size:16px;">\u26CF\uFE0F</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+        else if (iconType === 'trees') icon = L.divIcon({ className: 'trees-marker', html: '<div style="font-size:16px;">\uD83C\uDF32</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+        else if (iconType === 'herbs') icon = L.divIcon({ className: 'herbs-marker', html: '<div style="font-size:16px;">\uD83C\uDF3F</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+        else if (iconType === 'dynamic') icon = L.divIcon({ className: 'dynamic-marker', html: '<div style="width: 20px; height: 20px; background: gold; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: black;">↯</div>', iconSize: [20, 20], iconAnchor: [10, 10] });
 
-        const marker = L.marker([lat, lng], icon ? { icon } : {}).bindPopup(label);
-        if (iconType && markerGroups[iconType]) markerGroups[iconType].push(marker);
+        const marker = L.marker([lat, lng], { icon }).bindPopup(label);
+        markerGroups[iconType]?.push(marker);
         marker.addTo(map);
-        marker.on('contextmenu', async () => {
-          if (confirm('Delete this marker?')) {
-            if (checkPassword()) {
-              await deleteDoc(doc(db, 'markers', docSnap.id));
-              map.removeLayer(marker);
-            }
-          }
-        });
-        markers.push(marker);
       });
     })();
 
-    // Function to check password
-    function checkPassword() {
-      const password = prompt("Enter the password to add/delete markers:");
-      return password === 'Pumpitup';
-    }
-
-    // Add a new marker when map is clicked
-    map.on('click', async function(e) {
-      if (checkPassword()) {
-        const input = prompt("Enter label, 'fish', 'quest', or image URL:");
-        if (!input) return;
-
-        let iconType = null;
-        let icon = null;
-        let label = input;
-
-        if (input.toLowerCase() === 'fish') { 
-          iconType = 'fish'; 
-          icon = fishIcon; 
-          label = 'Fishing Spot'; 
-        } else if (input.toLowerCase() === 'quest') { 
-          iconType = 'quest'; 
-          icon = questIcon; 
-          label = prompt("Enter quest label:", "Quest!") || "Quest!"; 
+    // Add event listener for checkboxes
+    document.querySelectorAll('.toggle-marker').forEach(checkbox => {
+      checkbox.addEventListener('change', (event) => {
+        const markerType = event.target.getAttribute('data-type');
+        if (event.target.checked) {
+          markerGroups[markerType]?.forEach(marker => marker.addTo(map));
+        } else {
+          markerGroups[markerType]?.forEach(marker => map.removeLayer(marker));
         }
-
-        try {
-          const docRef = await addDoc(collection(db, 'markers'), {
-            lat: e.latlng.lat,
-            lng: e.latlng.lng,
-            label,
-            iconType,
-            ts: serverTimestamp()
-          });
-          const marker = L.marker([e.latlng.lat, e.latlng.lng], icon ? { icon } : {}).addTo(map).bindPopup(label);
-          marker.on('contextmenu', async () => {
-            if (confirm('Delete this marker?')) {
-              if (checkPassword()) {
-                await deleteDoc(doc(db, 'markers', docRef.id));
-                map.removeLayer(marker);
-              }
-            }
-          });
-          markers.push(marker);
-        } catch (err) {
-          console.error('Error saving marker:', err);
-          alert('Failed to save marker. Try again.');
-        }
-      } else {
-        alert('Incorrect password.');
-      }
+      });
     });
 
     function resetZoom() {

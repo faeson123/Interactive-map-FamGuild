@@ -7,6 +7,21 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     #map { height: 100vh; margin: 0; padding: 0; }
+    .sidebar {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      z-index: 1000;
+      font-size: 14px;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+      font-size: 16px;
+    }
     .grid-label {
       background: none;
       color: black;
@@ -48,8 +63,16 @@
 <body>
   <div id="map"></div>
   <div class="reset-button" onclick="resetZoom()">Reset Zoom</div>
+  <div class="sidebar">
+    <h3>Toggle Markers</h3>
+    <label><input type="checkbox" class="toggle-marker" data-type="fish" checked> Fish</label><br>
+    <label><input type="checkbox" class="toggle-marker" data-type="quest" checked> Quests</label><br>
+    <label><input type="checkbox" class="toggle-marker" data-type="herbs" checked> Herbs</label><br>
+    <label><input type="checkbox" class="toggle-marker" data-type="mining" checked> Mining</label><br>
+    <label><input type="checkbox" class="toggle-marker" data-type="trees" checked> Trees</label><br>
+    <label><input type="checkbox" class="toggle-marker" data-type="dynamic" checked> Dynamic Events</label>
+  </div>
   <div class="logo">FAM GUILD</div>
-
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
@@ -125,37 +148,16 @@
       });
     }
 
-    for (let row = 1; row < rows - 1; row++) {
-      for (let col = 1; col < columns - 1; col++) {
-        const topLeftY = row * cellHeight + 2;
-        const topLeftX = col * cellWidth + 2;
-        const label = String.fromCharCode(64 + col) + row;
-        L.marker([topLeftY, topLeftX], {
-          icon: L.divIcon({
-            className: 'grid-number',
-            html: label,
-            iconSize: [40, 24],
-            iconAnchor: [0, 0]
-          })
-        }).addTo(map);
-      }
-    }
+    const fishIcon = L.divIcon({ className: 'fish-marker', html: '<div style="color:red;font-size:12px;font-weight:bold;">X</div>', iconSize: [12, 12], iconAnchor: [6, 6] });
+    const questIcon = L.divIcon({ className: 'quest-marker', html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+    const miningIcon = L.divIcon({ className: 'mining-marker', html: '<div style="color:gray;font-size:16px;">\u26CF\uFE0F</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+    const treesIcon = L.divIcon({ className: 'trees-marker', html: '<div style="font-size:16px;">\uD83C\uDF32</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+    const herbsIcon = L.divIcon({ className: 'herbs-marker', html: '<div style="font-size:16px;">\uD83C\uDF3F</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+    const dynamicIcon = L.divIcon({ className: 'dynamic-marker', html: '<div style="width: 20px; height: 20px; background: gold; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: black;">↯</div>', iconSize: [20, 20], iconAnchor: [10, 10] });
 
-    const fishIcon = L.divIcon({
-      className: 'fish-marker',
-      html: '<div style="color:red;font-size:12px;font-weight:bold;">X</div>',
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
-    });
-
-    const questIcon = L.divIcon({
-      className: 'quest-marker',
-      html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
-
+    const markerGroups = { fish: [], quest: [], herbs: [], mining: [], trees: [], dynamic: [] };
     const markers = [];
+
     (async () => {
       const q = query(collection(db, 'markers'), orderBy('ts'));
       const snapshot = await getDocs(q);
@@ -163,19 +165,17 @@
         const data = docSnap.data();
         const { lat, lng, label, iconType, iconUrl } = data;
         let icon;
-        if (iconType === 'fish') {
-          icon = fishIcon;
-        } else if (iconType === 'quest') {
-          icon = questIcon;
-        } else if (iconUrl) {
-          icon = L.icon({
-            iconUrl,
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-            popupAnchor: [0, -40]
-          });
-        }
-        const marker = L.marker([lat, lng], icon ? { icon } : {}).addTo(map).bindPopup(label);
+        if (iconType === 'fish') icon = fishIcon;
+        else if (iconType === 'quest') icon = questIcon;
+        else if (iconType === 'mining') icon = miningIcon;
+        else if (iconType === 'trees') icon = treesIcon;
+        else if (iconType === 'herbs') icon = herbsIcon;
+        else if (iconType === 'dynamic') icon = dynamicIcon;
+        else if (iconUrl) icon = L.icon({ iconUrl, iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40] });
+
+        const marker = L.marker([lat, lng], icon ? { icon } : {}).bindPopup(label);
+        if (iconType && markerGroups[iconType]) markerGroups[iconType].push(marker);
+        marker.addTo(map);
         marker.on('contextmenu', async () => {
           if (confirm('Delete this marker?')) {
             await deleteDoc(doc(db, 'markers', docSnap.id));
@@ -186,8 +186,22 @@
       });
     })();
 
+    function toggleMarkers(type, show) {
+      markerGroups[type].forEach(marker => {
+        if (show) marker.addTo(map);
+        else map.removeLayer(marker);
+      });
+    }
+
+    document.querySelectorAll('.toggle-marker').forEach(input => {
+      input.addEventListener('change', () => {
+        const type = input.dataset.type;
+        toggleMarkers(type, input.checked);
+      });
+    });
+
     map.on('click', async function(e) {
-      const input = prompt("Enter label, 'fish', 'quest', or image URL:");
+      const input = prompt("Enter label, 'fish', 'quest', 'mining', 'trees', 'herbs', 'dynamic' or image URL:");
       if (!input) return;
 
       let iconType = null;
@@ -195,23 +209,17 @@
       let iconUrl = null;
       let label = input;
 
-      if (input.toLowerCase() === 'fish') {
-        iconType = 'fish';
-        icon = fishIcon;
-        label = 'Fishing Spot';
-      } else if (input.toLowerCase() === 'quest') {
-        iconType = 'quest';
-        icon = questIcon;
-        label = prompt("Enter quest label:", "Quest!") || "Quest!";
-      } else if (input.startsWith('http://') || input.startsWith('https://')) {
+      const type = input.toLowerCase();
+      if (type === 'fish') { iconType = 'fish'; icon = fishIcon; label = 'Fishing Spot'; }
+      else if (type === 'quest') { iconType = 'quest'; icon = questIcon; label = prompt("Enter quest label:", "Quest!") || "Quest!"; }
+      else if (type === 'mining') { iconType = 'mining'; icon = miningIcon; label = 'Mining Spot'; }
+      else if (type === 'trees') { iconType = 'trees'; icon = treesIcon; label = 'Tree Area'; }
+      else if (type === 'herbs') { iconType = 'herbs'; icon = herbsIcon; label = 'Herb Patch'; }
+      else if (type === 'dynamic') { iconType = 'dynamic'; icon = dynamicIcon; label = 'Dynamic Event'; }
+      else if (input.startsWith('http://') || input.startsWith('https://')) {
         iconType = 'custom';
         iconUrl = input;
-        icon = L.icon({
-          iconUrl,
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-          popupAnchor: [0, -40]
-        });
+        icon = L.icon({ iconUrl, iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40] });
         label = 'Image Marker';
       }
 

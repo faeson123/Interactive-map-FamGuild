@@ -9,16 +9,17 @@
   <style>
     #map { height: 100vh; }
     .grid-label {
-      background: rgba(0,0,0,0.6);
-      color: white;
+      background: none;
+      color: black;
       padding: 2px 4px;
       font-size: 14px;
-      border-radius: 3px;
+      font-weight: bold;
     }
     .grid-number {
       background: none;
       color: black;
-      font-size: 6px;
+      font-size: 12px;
+      font-weight: bold;
     }
     .reset-button {
       position: absolute;
@@ -45,7 +46,7 @@
       minZoom: -2
     });
 
-    var bounds = [[0,0], [1000,1000]];
+    var bounds = [[0,0], [1040,1040]];
     var image = L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);
 
@@ -55,63 +56,65 @@
       zoomLevelOffset: -4
     }).addTo(map);
 
-    const columns = 26;
-    const rows = 26;
-    const cellWidth = 1000 / columns;
-    const cellHeight = 1000 / rows;
+    const columns = 28;
+    const rows = 28;
+    const cellWidth = 1040 / columns;
+    const cellHeight = 1040 / rows;
 
-    // Grid lines
-    for (let i = 1; i < columns; i++) {
+    for (let i = 0; i <= columns; i++) {
       let x = i * cellWidth;
-      L.polyline([[0, x], [1000, x]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
+      L.polyline([[0, x], [1040, x]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
     }
-    for (let j = 1; j < rows; j++) {
+    for (let j = 0; j <= rows; j++) {
       let y = j * cellHeight;
-      L.polyline([[y, 0], [y, 1000]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
+      L.polyline([[y, 0], [y, 1040]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
     }
 
-    // Add top (1–26) labels
-    for (let i = 0; i < columns; i++) {
-      let label = (i + 1).toString();
-      let center = [cellHeight / 2, i * cellWidth + cellWidth / 2];
+    for (let i = 1; i < columns - 1; i++) {
+      let label = String.fromCharCode(64 + i);
+      let top = [0 + 4, i * cellWidth + cellWidth / 2];
+      let bottom = [1040 - 4, i * cellWidth + cellWidth / 2];
 
-      L.marker([center[0], center[1]], {
-        icon: L.divIcon({
-          className: 'grid-label',
-          html: label,
-          iconSize: [30, 20],
-          iconAnchor: [15, 10]
-        })
-      }).addTo(map);
+      [top, bottom].forEach(pos => {
+        L.marker(pos, {
+          icon: L.divIcon({
+            className: 'grid-label',
+            html: label,
+            iconSize: [30, 20],
+            iconAnchor: [15, 10]
+          })
+        }).addTo(map);
+      });
     }
 
-    // Add side (A–Z) labels
-    for (let j = 0; j < rows; j++) {
-      let label = String.fromCharCode(65 + j);
-      let center = [j * cellHeight + cellHeight / 2, cellWidth / 2];
+    for (let j = 1; j < rows - 1; j++) {
+      let label = j;
+      let left = [j * cellHeight + cellHeight / 2, 0 + 4];
+      let right = [j * cellHeight + cellHeight / 2, 1040 - 4];
 
-      L.marker([center[0], center[1]], {
-        icon: L.divIcon({
-          className: 'grid-label',
-          html: label,
-          iconSize: [30, 20],
-          iconAnchor: [15, 10]
-        })
-      }).addTo(map);
+      [left, right].forEach(pos => {
+        L.marker(pos, {
+          icon: L.divIcon({
+            className: 'grid-label',
+            html: label,
+            iconSize: [30, 20],
+            iconAnchor: [15, 10]
+          })
+        }).addTo(map);
+      });
     }
 
-    // Add small grid cell numbers in top-left of each cell
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        let topLeftY = row * cellHeight + 4;
-        let topLeftX = col * cellWidth + 4;
-        let label = String.fromCharCode(65 + row) + (col + 1);
+    for (let row = 1; row < rows - 1; row++) {
+      for (let col = 1; col < columns - 1; col++) {
+        const topLeftY = row * cellHeight + 4;
+        const topLeftX = col * cellWidth + 4;
+        const label = String.fromCharCode(64 + col) + row;
 
         L.marker([topLeftY, topLeftX], {
           icon: L.divIcon({
             className: 'grid-number',
             html: label,
-            iconSize: [16, 10],
+            iconSize: [40, 24],
             iconAnchor: [0, 0]
           })
         }).addTo(map);
@@ -127,13 +130,23 @@
       iconAnchor: [12, 12]
     });
 
+    const questIcon = L.divIcon({
+      className: 'quest-marker',
+      html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
     map.on('click', function(e) {
-      const input = prompt("Enter label for marker, 'fish' for red X, or image URL:", "New Marker or Image URL");
+      const input = prompt("Enter label for marker, 'fish' for red X, 'quest' for gold !, or image URL:", "New Marker or Image URL");
       if (!input) return;
 
+      let marker;
       if (input.toLowerCase() === 'fish') {
-        const fishMarker = L.marker(e.latlng, { icon: fishIcon }).addTo(map).bindPopup("Fishing Spot");
-        markers.push(fishMarker);
+        marker = L.marker(e.latlng, { icon: fishIcon }).addTo(map).bindPopup("Fishing Spot");
+      } else if (input.toLowerCase() === 'quest') {
+        const name = prompt("Enter quest marker name:", "Quest!");
+        marker = L.marker(e.latlng, { icon: questIcon }).addTo(map).bindPopup(name || "Quest!");
       } else if (input.startsWith('http://') || input.startsWith('https://')) {
         const icon = L.icon({
           iconUrl: input,
@@ -141,34 +154,31 @@
           iconAnchor: [20, 40],
           popupAnchor: [0, -40]
         });
-        const imgMarker = L.marker(e.latlng, { icon }).addTo(map).bindPopup("Image Marker");
-        markers.push(imgMarker);
+        marker = L.marker(e.latlng, { icon }).addTo(map).bindPopup("Image Marker");
       } else {
-        const newMarker = L.marker(e.latlng).addTo(map).bindPopup(input);
-        markers.push(newMarker);
+        marker = L.marker(e.latlng).addTo(map).bindPopup(input);
       }
-      saveMarkers();
-    });
-
-    map.on('contextmenu', function(e) {
-      let found = markers.find(m => m.getLatLng().equals(e.latlng));
-      if (found) {
-        map.removeLayer(found);
-        markers = markers.filter(m => m !== found);
+      marker.on('contextmenu', function() {
+        map.removeLayer(marker);
+        markers = markers.filter(m => m !== marker);
         saveMarkers();
-      }
+      });
+      markers.push(marker);
+      saveMarkers();
     });
 
     function saveMarkers() {
       const data = markers.map(m => {
         const iconUrl = m.options.icon?.options?.iconUrl || null;
         const isFish = m.options.icon?.options?.className === 'fish-marker';
+        const isQuest = m.options.icon?.options?.className === 'quest-marker';
         return {
           lat: m.getLatLng().lat,
           lng: m.getLatLng().lng,
-          label: m.getPopup().getContent(),
+          label: m.getPopup()?.getContent() || '',
           iconUrl,
-          isFish
+          isFish,
+          isQuest
         };
       });
       localStorage.setItem('mapMarkers', JSON.stringify(data));
@@ -180,6 +190,8 @@
         let m;
         if (d.isFish) {
           m = L.marker([d.lat, d.lng], { icon: fishIcon }).addTo(map).bindPopup(d.label);
+        } else if (d.isQuest) {
+          m = L.marker([d.lat, d.lng], { icon: questIcon }).addTo(map).bindPopup(d.label);
         } else if (d.iconUrl) {
           const icon = L.icon({
             iconUrl: d.iconUrl,
@@ -191,6 +203,11 @@
         } else {
           m = L.marker([d.lat, d.lng]).addTo(map).bindPopup(d.label);
         }
+        m.on('contextmenu', function() {
+          map.removeLayer(m);
+          markers = markers.filter(n => n !== m);
+          saveMarkers();
+        });
         markers.push(m);
       });
     }

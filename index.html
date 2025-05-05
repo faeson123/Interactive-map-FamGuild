@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Interactive Grid Map</title>
   <meta charset="utf-8" />
+  <title>Interactive Grid Map with Shared Markers</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; }
+    #map { height: 100vh; margin: 0; padding: 0; }
     .grid-label {
       background: none;
       color: black;
@@ -51,14 +51,32 @@
   <div class="logo">FAM GUILD</div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map', {
-      crs: L.CRS.Simple,
-      minZoom: -2
-    });
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+    import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
+    import {
+      getFirestore, collection, query,
+      orderBy, getDocs, addDoc, deleteDoc, doc,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 
-    var bounds = [[0,0], [1040,1040]];
-    var image = L.imageOverlay('image.png', bounds).addTo(map);
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhJyc3a-i6um7te-W2Z-m-8J0u0CMerJY",
+      authDomain: "map-data-base-620d3.firebaseapp.com",
+      projectId: "map-data-base-620d3",
+      storageBucket: "map-data-base-620d3.appspot.com",
+      messagingSenderId: "765561070786",
+      appId: "1:765561070786:web:f4e1e44c9284ea6ff8075b",
+      measurementId: "G-4NTXWDK5G0"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+
+    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+    const bounds = [[0,0], [1040,1040]];
+    L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);
 
     const columns = 28;
@@ -79,7 +97,6 @@
       let label = String.fromCharCode(64 + i);
       let top = [0 + 4, i * cellWidth + cellWidth / 2];
       let bottom = [1040 - 4, i * cellWidth + cellWidth / 2];
-
       [top, bottom].forEach(pos => {
         L.marker(pos, {
           icon: L.divIcon({
@@ -96,7 +113,6 @@
       let label = j;
       let left = [j * cellHeight + cellHeight / 2, 0 + 4];
       let right = [j * cellHeight + cellHeight / 2, 1040 - 4];
-
       [left, right].forEach(pos => {
         L.marker(pos, {
           icon: L.divIcon({
@@ -114,7 +130,6 @@
         const topLeftY = row * cellHeight + 2;
         const topLeftX = col * cellWidth + 2;
         const label = String.fromCharCode(64 + col) + row;
-
         L.marker([topLeftY, topLeftX], {
           icon: L.divIcon({
             className: 'grid-number',
@@ -126,15 +141,12 @@
       }
     }
 
-    let markers = [];
-
-    const fishIcon = L.icon({
-  iconUrl: 'clownfish.png',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-  className: 'fish-marker'
-});
+    const fishIcon = L.divIcon({
+      className: 'fish-marker',
+      html: '<div style="color:red;font-size:18px;font-weight:bold;">X</div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
 
     const questIcon = L.divIcon({
       className: 'quest-marker',
@@ -143,90 +155,92 @@
       iconAnchor: [12, 12]
     });
 
-    map.on('click', function(e) {
-      const input = prompt("Enter label for marker, 'fish' for red X, 'quest' for gold !, or image URL:", "New Marker or Image URL");
-      if (!input) return;
-
-      let marker;
-      if (input.toLowerCase() === 'fish') {
-        marker = L.marker(e.latlng, { icon: fishIcon }).addTo(map).bindPopup("Fishing Spot");
-      } else if (input.toLowerCase() === 'quest') {
-        const name = prompt("Enter quest marker name:", "Quest!");
-        marker = L.marker(e.latlng, { icon: questIcon }).addTo(map).bindPopup(name || "Quest!");
-      } else if (input.startsWith('http://') || input.startsWith('https://')) {
-        const icon = L.icon({
-          iconUrl: input,
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-          popupAnchor: [0, -40]
-        });
-        marker = L.marker(e.latlng, { icon }).addTo(map).bindPopup("Image Marker");
-      } else {
-        marker = L.marker(e.latlng).addTo(map).bindPopup(input);
-      }
-      marker.on('contextmenu', function() {
-        if (confirm('Are you sure you want to delete this marker?')) {
-          map.removeLayer(marker);
-          markers = markers.filter(m => m !== marker);
-          saveMarkers();
-        }
-      });
-      markers.push(marker);
-      saveMarkers();
-    });
-
-    function saveMarkers() {
-      const data = markers.map(m => {
-        const iconUrl = m.options.icon?.options?.iconUrl || null;
-        const isFish = m.options.icon?.options?.className === 'fish-marker';
-        const isQuest = m.options.icon?.options?.className === 'quest-marker';
-        return {
-          lat: m.getLatLng().lat,
-          lng: m.getLatLng().lng,
-          label: m.getPopup()?.getContent() || '',
-          iconUrl,
-          isFish,
-          isQuest
-        };
-      });
-      localStorage.setItem('mapMarkers', JSON.stringify(data));
-    }
-
-    function loadMarkers() {
-      const data = JSON.parse(localStorage.getItem('mapMarkers') || '[]');
-      data.forEach(d => {
-        let m;
-        if (d.isFish) {
-          m = L.marker([d.lat, d.lng], { icon: fishIcon }).addTo(map).bindPopup(d.label);
-        } else if (d.isQuest) {
-          m = L.marker([d.lat, d.lng], { icon: questIcon }).addTo(map).bindPopup(d.label);
-        } else if (d.iconUrl) {
-          const icon = L.icon({
-            iconUrl: d.iconUrl,
+    const markers = [];
+    (async () => {
+      const q = query(collection(db, 'markers'), orderBy('ts'));
+      const snapshot = await getDocs(q);
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const { lat, lng, label, iconType, iconUrl } = data;
+        let icon;
+        if (iconType === 'fish') {
+          icon = fishIcon;
+        } else if (iconType === 'quest') {
+          icon = questIcon;
+        } else if (iconUrl) {
+          icon = L.icon({
+            iconUrl,
             iconSize: [40, 40],
             iconAnchor: [20, 40],
             popupAnchor: [0, -40]
           });
-          m = L.marker([d.lat, d.lng], { icon }).addTo(map).bindPopup(d.label);
-        } else {
-          m = L.marker([d.lat, d.lng]).addTo(map).bindPopup(d.label);
         }
-        m.on('contextmenu', function() {
-          if (confirm('Are you sure you want to delete this marker?')) {
-            map.removeLayer(m);
-            markers = markers.filter(n => n !== m);
-            saveMarkers();
+        const marker = L.marker([lat, lng], icon ? { icon } : {}).addTo(map).bindPopup(label);
+        marker.on('contextmenu', async () => {
+          if (confirm('Delete this marker?')) {
+            await deleteDoc(doc(db, 'markers', docSnap.id));
+            map.removeLayer(marker);
           }
         });
-        markers.push(m);
+        markers.push(marker);
       });
-    }
+    })();
+
+    map.on('click', async function(e) {
+      const input = prompt("Enter label, 'fish', 'quest', or image URL:");
+      if (!input) return;
+
+      let iconType = null;
+      let icon = null;
+      let iconUrl = null;
+      let label = input;
+
+      if (input.toLowerCase() === 'fish') {
+        iconType = 'fish';
+        icon = fishIcon;
+        label = 'Fishing Spot';
+      } else if (input.toLowerCase() === 'quest') {
+        iconType = 'quest';
+        icon = questIcon;
+        label = prompt("Enter quest label:", "Quest!") || "Quest!";
+      } else if (input.startsWith('http://') || input.startsWith('https://')) {
+        iconType = 'custom';
+        iconUrl = input;
+        icon = L.icon({
+          iconUrl,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+          popupAnchor: [0, -40]
+        });
+        label = 'Image Marker';
+      }
+
+      try {
+        const docRef = await addDoc(collection(db, 'markers'), {
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+          label,
+          iconType,
+          iconUrl,
+          ts: serverTimestamp()
+        });
+        const marker = L.marker([e.latlng.lat, e.latlng.lng], icon ? { icon } : {}).addTo(map).bindPopup(label);
+        marker.on('contextmenu', async () => {
+          if (confirm('Delete this marker?')) {
+            await deleteDoc(doc(db, 'markers', docRef.id));
+            map.removeLayer(marker);
+          }
+        });
+        markers.push(marker);
+      } catch (err) {
+        console.error('Error saving marker:', err);
+        alert('Failed to save marker. Try again.');
+      }
+    });
 
     function resetZoom() {
       map.fitBounds(bounds);
     }
-
-    loadMarkers();
   </script>
 </body>
 </html>

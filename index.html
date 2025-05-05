@@ -53,6 +53,18 @@
     .toggle-panel label {
       display: block;
     }
+    .undo-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #888;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -66,6 +78,7 @@
     <label><input type="checkbox" class="type-toggle" data-type="quest" checked /> Quest ❗</label>
     <label><input type="checkbox" class="type-toggle" data-type="dynamic" checked /> Dynamic ⚔️</label>
   </div>
+  <button class="undo-button" id="undoBtn">Undo Delete</button>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script type="module">
@@ -75,7 +88,8 @@
       ref,
       push,
       onChildAdded,
-      remove
+      remove,
+      set
     } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const firebaseConfig = {
@@ -92,6 +106,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const markerRef = ref(db, "markers");
+
+    let lastDeleted = null;
 
     const markerIcons = {
       fish: '❌',
@@ -192,7 +208,7 @@
     function createMarker(data, key) {
       const icon = L.divIcon({ html: `<div style='font-size: 20px;'>${markerIcons[data.type]}</div>` });
       const marker = L.marker([data.lat, data.lng], { icon });
-      marker.bindPopup(`<b>${data.type.toUpperCase()}</b><br>${data.name}<br><button onclick="if(confirm('Delete marker?')) { remove(ref(db, 'markers/' + '${key}')) }">Delete</button>`);
+      marker.bindPopup(`<b>${data.type.toUpperCase()}</b><br>${data.name ? data.name : ''}<br><button onclick="if(confirm('Delete marker?')) { lastDeleted = { key: '${key}', data: ${JSON.stringify(data)} }; remove(ref(db, 'markers/' + '${key}')); }">Delete</button>`);
       typeLayers[data.type].addLayer(marker);
     }
 
@@ -205,8 +221,21 @@
       if (!checkPassword()) return;
       const type = prompt("Enter marker type: fish, mining, herb, quest, dynamic");
       if (!markerIcons[type]) return alert("Invalid type.");
-      const name = prompt("Enter custom name for this marker:");
+      let name = "";
+      if (type !== 'fish') {
+        name = prompt("Enter custom name for this marker:") || "";
+      }
       push(markerRef, { lat: e.latlng.lat, lng: e.latlng.lng, type, name });
+    });
+
+    document.getElementById("undoBtn").addEventListener("click", () => {
+      if (lastDeleted) {
+        set(ref(db, 'markers/' + lastDeleted.key), lastDeleted.data);
+        alert("Marker restored.");
+        lastDeleted = null;
+      } else {
+        alert("Nothing to undo.");
+      }
     });
   </script>
 </body>

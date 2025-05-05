@@ -14,7 +14,21 @@
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+    
+    function checkPassword() {
+      const stored = sessionStorage.getItem('adminPassword');
+      if (stored === 'Pumpitup') return true;
+      const input = prompt("Enter admin password:");
+      if (input === 'Pumpitup') {
+        sessionStorage.setItem('adminPassword', 'Pumpitup');
+        return true;
+      }
+      alert("Incorrect password.");
+      return false;
+    }
+
+
+const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
     const bounds = [[0, 0], [1040, 1040]];
     L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);

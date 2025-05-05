@@ -128,12 +128,13 @@
 
     let markers = [];
 
-    const fishIcon = L.divIcon({
-      className: 'fish-marker',
-      html: '<div style="color:red;font-size:24px;font-weight:bold;">×</div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
+    const fishIcon = L.icon({
+  iconUrl: 'Imil-Sea-Clown-fish.32.png',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -16],
+  className: 'fish-marker'
+});
 
     const questIcon = L.divIcon({
       className: 'quest-marker',

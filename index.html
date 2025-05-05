@@ -5,7 +5,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-minimap/dist/Control.MiniMap.min.css" />
   <style>
     #map { height: 100vh; }
     .grid-label {
@@ -32,14 +31,26 @@
       cursor: pointer;
       z-index: 1000;
     }
+    .logo {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: gold;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      padding: 10px 15px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <div class="reset-button" onclick="resetZoom()">Reset Zoom</div>
+  <div class="logo">FAM GUILD</div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-minimap/dist/Control.MiniMap.min.js"></script>
   <script>
     var map = L.map('map', {
       crs: L.CRS.Simple,
@@ -49,12 +60,6 @@
     var bounds = [[0,0], [1040,1040]];
     var image = L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);
-
-    var miniMap = new L.Control.MiniMap(L.imageOverlay('image.png', bounds), {
-      toggleDisplay: true,
-      minimized: false,
-      zoomLevelOffset: -4
-    }).addTo(map);
 
     const columns = 28;
     const rows = 28;
@@ -106,8 +111,8 @@
 
     for (let row = 1; row < rows - 1; row++) {
       for (let col = 1; col < columns - 1; col++) {
-        const topLeftY = row * cellHeight + 4;
-        const topLeftX = col * cellWidth + 4;
+        const topLeftY = row * cellHeight + 2;
+        const topLeftX = col * cellWidth + 2;
         const label = String.fromCharCode(64 + col) + row;
 
         L.marker([topLeftY, topLeftX], {
@@ -159,9 +164,11 @@
         marker = L.marker(e.latlng).addTo(map).bindPopup(input);
       }
       marker.on('contextmenu', function() {
-        map.removeLayer(marker);
-        markers = markers.filter(m => m !== marker);
-        saveMarkers();
+        if (confirm('Are you sure you want to delete this marker?')) {
+          map.removeLayer(marker);
+          markers = markers.filter(m => m !== marker);
+          saveMarkers();
+        }
       });
       markers.push(marker);
       saveMarkers();
@@ -204,9 +211,11 @@
           m = L.marker([d.lat, d.lng]).addTo(map).bindPopup(d.label);
         }
         m.on('contextmenu', function() {
-          map.removeLayer(m);
-          markers = markers.filter(n => n !== m);
-          saveMarkers();
+          if (confirm('Are you sure you want to delete this marker?')) {
+            map.removeLayer(m);
+            markers = markers.filter(n => n !== m);
+            saveMarkers();
+          }
         });
         markers.push(m);
       });

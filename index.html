@@ -120,7 +120,28 @@
       }
     }
 
-    // Marker groupings by type
+    // Function to add grid
+    function addGrid() {
+      for (let i = 0; i <= columns; i++) {
+        L.polyline([[0, i * cellWidth], [1040, i * cellWidth]], { color: 'black', weight: 1 }).addTo(map);
+      }
+      for (let j = 0; j <= rows; j++) {
+        L.polyline([[j * cellHeight, 0], [j * cellHeight, 1040]], { color: 'black', weight: 1 }).addTo(map);
+      }
+      for (let i = 0; i < columns; i++) {
+        for (let j = 0; j < rows; j++) {
+          const label = (i + 1) + ',' + (j + 1);
+          L.marker([(i * cellWidth) + (cellWidth / 2), (j * cellHeight) + (cellHeight / 2)], {
+            icon: L.divIcon({
+              className: 'grid-label',
+              html: label
+            })
+          }).addTo(map);
+        }
+      }
+    }
+
+    // Group markers by type
     const markerGroups = {
       fish: [],
       quest: [],
@@ -130,6 +151,7 @@
       dynamic: []
     };
 
+    // Fetch markers from Firestore
     (async () => {
       const q = query(collection(db, 'markers'), orderBy('ts'));
       const snapshot = await getDocs(q);
@@ -165,6 +187,9 @@
     function resetZoom() {
       map.fitBounds(bounds);
     }
+
+    // Ensure grid is added to the map
+    addGrid();
   </script>
 </body>
 </html>

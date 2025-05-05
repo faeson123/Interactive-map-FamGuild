@@ -1,193 +1,60 @@
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-  import {
-    getFirestore, collection, query,
-    orderBy, getDocs, addDoc, deleteDoc, doc,
-    serverTimestamp
-  } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBhJyc3a-i6um7te-W2Z-m-8J0u0CMerJY",
-    authDomain: "map-data-base-620d3.firebaseapp.com",
-    projectId: "map-data-base-620d3",
-    storageBucket: "map-data-base-620d3.appspot.com",
-    messagingSenderId: "765561070786",
-    appId: "1:765561070786:web:f4e1e44c9284ea6ff8075b",
-    measurementId: "G-4NTXWDK5G0"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-  const bounds = [[0,0], [1040,1040]];
-  L.imageOverlay('image.png', bounds).addTo(map);
-  map.fitBounds(bounds);
-
-  const columns = 28;
-  const rows = 28;
-  const cellWidth = 1040 / columns;
-  const cellHeight = 1040 / rows;
-
-  // Draw grid lines
-  for (let i = 0; i <= columns; i++) {
-    let x = i * cellWidth;
-    L.polyline([[0, x], [1040, x]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
-  }
-  for (let j = 0; j <= rows; j++) {
-    let y = j * cellHeight;
-    L.polyline([[y, 0], [y, 1040]], { color: 'rgba(0,0,0,0.3)', weight: 1 }).addTo(map);
-  }
-
-  // Add grid labels like A1, B2 in the top-left of each usable cell
-  for (let row = 0; row < 26; row++) {
-    for (let col = 0; col < 26; col++) {
-      const label = String.fromCharCode(65 + col) + (row + 1);
-      const y = (row + 1) * cellHeight;
-      const x = (col + 1) * cellWidth;
-      L.marker([y + 2, x + 2], {
-        icon: L.divIcon({
-          className: 'grid-number',
-          html: `<div style="font-size:10px;color:black;">${label}</div>`,
-          iconSize: [30, 12],
-          iconAnchor: [0, 0]
-        })
-      }).addTo(map);
-    }
-  }
-
-  const fishIcon = L.divIcon({ className: 'fish-marker', html: '<div style="color:red;font-size:12px;font-weight:bold;">X</div>', iconSize: [12, 12], iconAnchor: [6, 6] });
-  const questIcon = L.divIcon({ className: 'quest-marker', html: '<div style="color:gold;font-size:24px;font-weight:bold;">!</div>', iconSize: [24, 24], iconAnchor: [12, 12] });
-  const miningIcon = L.divIcon({ className: 'mining-marker', html: '<div style="color:gray;font-size:16px;">⛏️</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
-  const treesIcon = L.divIcon({ className: 'trees-marker', html: '<div style="font-size:16px;">🌲</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
-  const herbsIcon = L.divIcon({ className: 'herbs-marker', html: '<div style="font-size:16px;">🌿</div>', iconSize: [16, 16], iconAnchor: [8, 8] });
-  const dynamicIcon = L.divIcon({ className: 'dynamic-marker', html: '<div style="width: 20px; height: 20px; background: gold; clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: black;">↯</div>', iconSize: [20, 20], iconAnchor: [10, 10] });
-
-  const markerGroups = { fish: [], quest: [], herbs: [], mining: [], trees: [], dynamic: [] };
-  const markers = [];
-
-  let passwordAccepted = sessionStorage.getItem('pw') === 'Pumpitup';
-
-  (async () => {
-    const q = query(collection(db, 'markers'), orderBy('ts'));
-    const snapshot = await getDocs(q);
-    snapshot.forEach(docSnap => {
-      const data = docSnap.data();
-      const { lat, lng, label, iconType, iconUrl } = data;
-      let icon;
-      if (iconType === 'fish') icon = fishIcon;
-      else if (iconType === 'quest') icon = questIcon;
-      else if (iconType === 'mining') icon = miningIcon;
-      else if (iconType === 'trees') icon = treesIcon;
-      else if (iconType === 'herbs') icon = herbsIcon;
-      else if (iconType === 'dynamic') icon = dynamicIcon;
-      else if (iconUrl) icon = L.icon({ iconUrl, iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40] });
-
-      const marker = L.marker([lat, lng], icon ? { icon } : {}).bindPopup(label);
-      marker.addTo(map);
-
-      if (iconType && markerGroups[iconType]) markerGroups[iconType].push(marker);
-
-      marker.on('contextmenu', async () => {
-        if (!passwordAccepted) {
-          const pw = prompt("Enter password to delete marker:");
-          if (pw === "Pumpitup") {
-            passwordAccepted = true;
-            sessionStorage.setItem('pw', 'Pumpitup');
-          } else return;
-        }
-
-        if (confirm('Delete this marker?')) {
-          await deleteDoc(doc(db, 'markers', docSnap.id));
-          map.removeLayer(marker);
-        }
-      });
-
-      markers.push(marker);
-    });
-  })();
-
-  function toggleMarkers(type, show) {
-    markerGroups[type].forEach(marker => {
-      if (show) marker.addTo(map);
-      else map.removeLayer(marker);
-    });
-  }
-
-  document.querySelectorAll('.toggle-marker').forEach(input => {
-    input.addEventListener('change', () => {
-      const type = input.dataset.type;
-      toggleMarkers(type, input.checked);
-    });
-  });
-
-  map.on('click', async function(e) {
-    if (!passwordAccepted) {
-      const pw = prompt("Enter password to add marker:");
-      if (pw === "Pumpitup") {
-        passwordAccepted = true;
-        sessionStorage.setItem('pw', 'Pumpitup');
-      } else return;
-    }
-
-    const input = prompt("Enter label, 'fish', 'quest', 'mining', 'trees', 'herbs', 'dynamic' or image URL:");
-    if (!input) return;
-
-    let iconType = null;
-    let icon = null;
-    let iconUrl = null;
-    let label = input;
-
-    const type = input.toLowerCase();
-    if (type === 'fish') { iconType = 'fish'; icon = fishIcon; label = 'Fishing Spot'; }
-    else if (type === 'quest') { iconType = 'quest'; icon = questIcon; label = prompt("Enter quest label:", "Quest!") || "Quest!"; }
-    else if (type === 'mining') { iconType = 'mining'; icon = miningIcon; label = 'Mining Spot'; }
-    else if (type === 'trees') { iconType = 'trees'; icon = treesIcon; label = 'Tree Area'; }
-    else if (type === 'herbs') { iconType = 'herbs'; icon = herbsIcon; label = 'Herb Patch'; }
-    else if (type === 'dynamic') { iconType = 'dynamic'; icon = dynamicIcon; label = 'Dynamic Event'; }
-    else if (input.startsWith('http://') || input.startsWith('https://')) {
-      iconType = 'custom';
-      iconUrl = input;
-      icon = L.icon({ iconUrl, iconSize: [40, 40], iconAnchor: [20, 40], popupAnchor: [0, -40] });
-      label = 'Image Marker';
-    }
-
-    try {
-      const docRef = await addDoc(collection(db, 'markers'), {
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
-        label,
-        iconType,
-        iconUrl,
-        ts: serverTimestamp()
-      });
-      const marker = L.marker([e.latlng.lat, e.latlng.lng], icon ? { icon } : {}).addTo(map).bindPopup(label);
-
-      if (iconType && markerGroups[iconType]) markerGroups[iconType].push(marker);
-
-      marker.on('contextmenu', async () => {
-        if (!passwordAccepted) {
-          const pw = prompt("Enter password to delete marker:");
-          if (pw === "Pumpitup") {
-            passwordAccepted = true;
-            sessionStorage.setItem('pw', 'Pumpitup');
-          } else return;
-        }
-
-        if (confirm('Delete this marker?')) {
-          await deleteDoc(doc(db, 'markers', docRef.id));
-          map.removeLayer(marker);
-        }
-      });
-
-      markers.push(marker);
-    } catch (err) {
-      console.error('Error saving marker:', err);
-      alert('Failed to save marker. Try again.');
-    }
-  });
-
-  function resetZoom() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Grid Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    html, body { margin: 0; height: 100%; }
+    #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+    const bounds = [[0, 0], [1040, 1040]];
+    L.imageOverlay('image.png', bounds).addTo(map);
     map.fitBounds(bounds);
-  }
-</script>
+
+    const columns = 28;
+    const rows = 28;
+    const cellWidth = 1040 / columns;
+    const cellHeight = 1040 / rows;
+
+    for (let i = 1; i < columns - 1; i++) {
+      let label = String.fromCharCode(64 + i);
+      let top = [0 + 4, i * cellWidth + cellWidth / 2];
+      let bottom = [1040 - 4, i * cellWidth + cellWidth / 2];
+      [top, bottom].forEach(pos => {
+        L.marker(pos, {
+          icon: L.divIcon({
+            className: 'grid-label',
+            html: label,
+            iconSize: [30, 20],
+            iconAnchor: [15, 10]
+          })
+        }).addTo(map);
+      });
+    }
+
+    for (let j = 1; j < rows - 1; j++) {
+      let label = j;
+      let left = [j * cellHeight + cellHeight / 2, 0 + 4];
+      let right = [j * cellHeight + cellHeight / 2, 1040 - 4];
+      [left, right].forEach(pos => {
+        L.marker(pos, {
+          icon: L.divIcon({
+            className: 'grid-label',
+            html: label,
+            iconSize: [30, 20],
+            iconAnchor: [15, 10]
+          })
+        }).addTo(map);
+      });
+    }
+  </script>
+</body>
+</html>

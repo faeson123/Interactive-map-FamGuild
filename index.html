@@ -1,20 +1,107 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Grid Map</title>
+  <title>Interactive Grid Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    html, body { margin: 0; height: 100%; }
-    #map { width: 100%; height: 100%; }
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+    .grid-label {
+      font-size: 10px;
+      color: black;
+      position: absolute;
+      pointer-events: none;
+    }
+    .grid-border {
+      font-weight: bold;
+      font-size: 14px;
+      color: black;
+      background: transparent;
+    }
+    .logo {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background-color: gold;
+      color: white;
+      font-weight: bold;
+      padding: 5px 10px;
+      font-size: 16px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="logo">FAM GUILD</div>
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
-    
+    const map = L.map('map', {
+      crs: L.CRS.Simple,
+      minZoom: -2,
+      maxZoom: 2,
+    });
+
+    const cols = 26;
+    const rows = 26;
+    const cellSize = 40;
+    const width = cols * cellSize;
+    const height = rows * cellSize;
+    const bounds = [[0, 0], [height, width]];
+
+    // Placeholder image
+    L.imageOverlay("https://upload.wikimedia.org/wikipedia/commons/3/38/BlankMap-World-v2.png", bounds).addTo(map);
+    map.setMaxBounds(bounds);
+    map.fitBounds(bounds);
+
+    // Draw internal grid labels
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const y = row * cellSize + 5;
+        const x = col * cellSize + 5;
+        const label = String.fromCharCode(65 + col) + (row + 1);
+        const divIcon = L.divIcon({
+          className: 'grid-label',
+          html: label,
+          iconSize: [0, 0]
+        });
+        L.marker([y, x], { icon: divIcon, interactive: false }).addTo(map);
+      }
+    }
+
+    // Draw vertical and horizontal grid lines
+    for (let i = 0; i <= cols; i++) {
+      const x = i * cellSize;
+      L.polyline([[0, x], [height, x]], { color: 'black', weight: 1 }).addTo(map);
+    }
+    for (let j = 0; j <= rows; j++) {
+      const y = j * cellSize;
+      L.polyline([[y, 0], [y, width]], { color: 'black', weight: 1 }).addTo(map);
+    }
+
+    // Border labels
+    for (let i = 0; i < cols; i++) {
+      const label = String.fromCharCode(65 + i);
+      const x = i * cellSize + cellSize / 2;
+      L.marker([0, x], { icon: L.divIcon({ className: 'grid-border', html: label }), interactive: false }).addTo(map);
+      L.marker([height, x], { icon: L.divIcon({ className: 'grid-border', html: label }), interactive: false }).addTo(map);
+    }
+    for (let j = 0; j < rows; j++) {
+      const y = j * cellSize + cellSize / 2;
+      L.marker([y, 0], { icon: L.divIcon({ className: 'grid-border', html: j + 1 }), interactive: false }).addTo(map);
+      L.marker([y, width], { icon: L.divIcon({ className: 'grid-border', html: j + 1 }), interactive: false }).addTo(map);
+    }
+
+    const markerLayer = L.layerGroup().addTo(map);
+
     function checkPassword() {
       const stored = sessionStorage.getItem('adminPassword');
       if (stored === 'Pumpitup') return true;
@@ -27,48 +114,15 @@
       return false;
     }
 
-
-const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
-    const bounds = [[0, 0], [1040, 1040]];
-    L.imageOverlay('image.png', bounds).addTo(map);
-    map.fitBounds(bounds);
-
-    const columns = 28;
-    const rows = 28;
-    const cellWidth = 1040 / columns;
-    const cellHeight = 1040 / rows;
-
-    for (let i = 1; i < columns - 1; i++) {
-      let label = String.fromCharCode(64 + i);
-      let top = [0 + 4, i * cellWidth + cellWidth / 2];
-      let bottom = [1040 - 4, i * cellWidth + cellWidth / 2];
-      [top, bottom].forEach(pos => {
-        L.marker(pos, {
-          icon: L.divIcon({
-            className: 'grid-label',
-            html: label,
-            iconSize: [30, 20],
-            iconAnchor: [15, 10]
-          })
-        }).addTo(map);
+    map.on('click', function (e) {
+      if (!checkPassword()) return;
+      const marker = L.marker(e.latlng, { draggable: false });
+      marker.bindPopup("<button onclick=\"if(confirm('Delete marker?')) { markerLayer.removeLayer(this._marker); }\">Delete</button>");
+      marker.on("popupopen", function () {
+        this.getPopup()._contentNode.querySelector("button")._marker = marker;
       });
-    }
-
-    for (let j = 1; j < rows - 1; j++) {
-      let label = j;
-      let left = [j * cellHeight + cellHeight / 2, 0 + 4];
-      let right = [j * cellHeight + cellHeight / 2, 1040 - 4];
-      [left, right].forEach(pos => {
-        L.marker(pos, {
-          icon: L.divIcon({
-            className: 'grid-label',
-            html: label,
-            iconSize: [30, 20],
-            iconAnchor: [15, 10]
-          })
-        }).addTo(map);
-      });
-    }
+      marker.addTo(markerLayer);
+    });
   </script>
 </body>
 </html>

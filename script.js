@@ -147,6 +147,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (type !== 'fish') {
       name = prompt("Enter custom name for this marker:") || "";
     }
+    console.log('📤 Sending marker:', { lat: e.latlng.lat, lng: e.latlng.lng, type, name, authKey: 'Pumpitup' });
     push(markerRef, {
       lat: e.latlng.lat,
       lng: e.latlng.lng,
@@ -162,6 +163,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById("undoBtn")?.addEventListener("click", () => {
     if (lastDeleted) {
+      console.log('↩️ Restoring marker:', { ...lastDeleted.data, authKey: 'Pumpitup' });
       set(ref(db, 'markers/' + lastDeleted.key), { ...lastDeleted.data, authKey: 'Pumpitup' })
         .then(() => console.log("↩️ Marker restored"))
         .catch(err => console.error("❌ Restore failed:", err));

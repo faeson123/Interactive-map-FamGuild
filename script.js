@@ -5,6 +5,7 @@ import {
   ref,
   push,
   onChildAdded,
+  onChildRemoved,
   remove,
   set
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -25,6 +26,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const db = getDatabase(app);
   const markerRef = ref(db, "markers");
   let lastDeleted = null;
+  const markersByKey = {};
 
   const markerIcons = {
     fish: '❌',
@@ -42,12 +44,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const bounds = [[0, 0], [height, width]];
 
   const map = L.map('map', {
-    fullscreenControl: true,
-    minZoom: -2,
+    crs: L.CRS.Simple,
+    minZoom: -1,
     maxZoom: 2,
     maxBounds: bounds,
     maxBoundsViscosity: 1.0,
-    crs: L.CRS.Simple
+    fullscreenControl: true
   });
 
   L.imageOverlay("map-bg.png", bounds).addTo(map);
@@ -126,6 +128,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const marker = L.marker([data.lat, data.lng], { icon });
     marker.bindPopup(`<b>${data.type.toUpperCase()}</b><br>${data.name || ''}<br><button onclick="window.deleteMarker('${key}', ${JSON.stringify(data).replace(/"/g, '&quot;')})">Delete</button>`);
     typeLayers[data.type].addLayer(marker);
+    markersByKey[key] = { marker, type: data.type };
   }
 
   window.deleteMarker = function (key, data) {
@@ -136,11 +139,20 @@ window.addEventListener('DOMContentLoaded', () => {
         .then(() => console.log("🗑 Marker deleted"))
         .catch(err => console.error("❌ Delete failed:", err));
     }
-  }
+  };
 
   onChildAdded(markerRef, snapshot => {
     const data = snapshot.val();
     createMarker(data, snapshot.key);
+  });
+
+  onChildRemoved(markerRef, snapshot => {
+    const key = snapshot.key;
+    const entry = markersByKey[key];
+    if (entry) {
+      typeLayers[entry.type].removeLayer(entry.marker);
+      delete markersByKey[key];
+    }
   });
 
   map.on('click', function (e) {
@@ -151,7 +163,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (type !== 'fish') {
       name = prompt("Enter custom name for this marker:") || "";
     }
-    console.log('📤 Sending marker:', { lat: e.latlng.lat, lng: e.latlng.lng, type, name, authKey: 'Pumpitup' });
     push(markerRef, {
       lat: e.latlng.lat,
       lng: e.latlng.lng,
@@ -167,7 +178,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById("undoBtn")?.addEventListener("click", () => {
     if (lastDeleted) {
-      console.log('↩️ Restoring marker:', { ...lastDeleted.data, authKey: 'Pumpitup' });
       set(ref(db, 'markers/' + lastDeleted.key), { ...lastDeleted.data, authKey: 'Pumpitup' })
         .then(() => console.log("↩️ Marker restored"))
         .catch(err => console.error("❌ Restore failed:", err));

@@ -34,6 +34,11 @@ window.addEventListener('DOMContentLoaded', () => {
   };
 
   const map = L.map('map', {
+      fullscreenControl: true,
+      minZoom: 0,
+      maxZoom: 2,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0,
     crs: L.CRS.Simple,
     minZoom: -2,
     maxZoom: 2,

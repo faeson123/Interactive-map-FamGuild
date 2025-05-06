@@ -82,7 +82,22 @@
       z-index: 1000;
     }
   </style>
-
-  <!-- ✅ Leaflet JS must load BEFORE your custom script -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 </head>
+<body>
+  <div class="frame">
+    <div id="map"></div>
+    <div class="logo">FAM GUILD</div>
+    <div class="toggle-panel">
+      <label><input type="checkbox" id="toggleMarkers" checked /> Show All Markers</label>
+      <label><input type="checkbox" class="type-toggle" data-type="fish" checked /> Fish ❌</label>
+      <label><input type="checkbox" class="type-toggle" data-type="mining" checked /> Mining ⛏️</label>
+      <label><input type="checkbox" class="type-toggle" data-type="herb" checked /> Herb 🌿</label>
+      <label><input type="checkbox" class="type-toggle" data-type="quest" checked /> Quest ❗</label>
+      <label><input type="checkbox" class="type-toggle" data-type="dynamic" checked /> Dynamic ⚔️</label>
+    </div>
+    <button class="undo-button" id="undoBtn">Undo Delete</button>
+  </div>
+  <script type="module" src="script.js"></script>
+</body>
+</html>

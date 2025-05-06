@@ -1,3 +1,4 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
   getDatabase,
@@ -33,23 +34,21 @@ window.addEventListener('DOMContentLoaded', () => {
     dynamic: '⚔️'
   };
 
-  const map = L.map('map', {
-      fullscreenControl: true,
-      minZoom: 0,
-      maxZoom: 2,
-      maxBounds: bounds,
-      maxBoundsViscosity: 1.0,
-    crs: L.CRS.Simple,
-    minZoom: -2,
-    maxZoom: 2,
-  });
-
   const cols = 26;
   const rows = 26;
   const cellSize = 30;
   const width = cols * cellSize;
   const height = rows * cellSize;
   const bounds = [[0, 0], [height, width]];
+
+  const map = L.map('map', {
+    fullscreenControl: true,
+    minZoom: -2,
+    maxZoom: 2,
+    maxBounds: bounds,
+    maxBoundsViscosity: 1.0,
+    crs: L.CRS.Simple
+  });
 
   L.imageOverlay("map-bg.png", bounds).addTo(map);
   map.setMaxBounds(bounds);

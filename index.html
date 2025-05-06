@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <title>Interactive Grid Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet Styles -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.css" />
+
   <style>
     html, body {
       margin: 0;
@@ -26,6 +29,22 @@
       width: 800px;
       height: 800px;
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+    .leaflet-div-icon {
+      background: none !important;
+      border: none !important;
+    }
+    .grid-label {
+      font-size: 10px;
+      color: black;
+      position: absolute;
+      pointer-events: none;
+    }
+    .grid-border {
+      font-weight: bold;
+      font-size: 14px;
+      color: black;
+      background: transparent;
     }
     .logo {
       position: absolute;
@@ -67,6 +86,10 @@
       z-index: 1000;
     }
   </style>
+
+  <!-- Leaflet JS and Fullscreen -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
 </head>
 <body>
   <div class="frame">
@@ -83,8 +106,7 @@
     <button class="undo-button" id="undoBtn">Undo Delete</button>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.fullscreen@1.6.0/Control.FullScreen.js"></script>
+  <!-- Main script -->
   <script type="module" src="script.js"></script>
 </body>
 </html>
